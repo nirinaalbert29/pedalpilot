@@ -1,0 +1,15 @@
+{
+  "name": "pedalpilot",
+  "private": true,
+  "description": "PedalPilot - systeme multi-agents IA pour un atelier/boutique de velos",
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:reset": "docker compose down -v && docker compose up -d",
+    "api:dev": "pnpm --filter api start:dev",
+    "web:dev": "pnpm --filter web dev",
+    "db:migrate": "pnpm --filter api db:migrate",
+    "db:seed": "pnpm --filter api db:seed",
+    "db:studio": "pnpm --filter api db:studio"
+  }
+}

@@ -1,0 +1,321 @@
+// PedalPilot - schema de donnees
+// Principe : tout ce que font les agents est tracable (AgentEvent + AgentRun).
+// Stock : Product.stock = quantite DISPONIBLE. Une reservation la decremente tout de suite,
+// une annulation la restitue. StockMovement.delta = variation de cette quantite disponible.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum ProspectStatus {
+  NEW
+  QUALIFIED
+  APPOINTMENT_BOOKED
+  FOLLOWING_UP
+  WON
+  LOST
+}
+
+enum Temperature {
+  HOT
+  WARM
+  COLD
+}
+
+enum Urgency {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Channel {
+  WEB_CHAT
+  EMAIL
+  TELEGRAM
+  WHATSAPP
+}
+
+enum MessageRole {
+  PROSPECT
+  AGENT
+  HUMAN
+  SYSTEM
+}
+
+enum AppointmentType {
+  REPAIR
+  TEST_RIDE
+  PURCHASE
+  FITTING
+}
+
+enum AppointmentStatus {
+  PROPOSED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum ProductCategory {
+  BIKE
+  PART
+  ACCESSORY
+  CONSUMABLE
+}
+
+enum StockReason {
+  RESTOCK
+  RESERVATION
+  RELEASE
+  SALE
+  ADJUSTMENT
+}
+
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  FULFILLED
+}
+
+enum FollowUpStatus {
+  SCHEDULED
+  SENT
+  CANCELLED
+  FAILED
+}
+
+enum AgentName {
+  ORCHESTRATOR
+  QUALIFICATION
+  SCHEDULING
+  FOLLOWUP
+  INVENTORY
+}
+
+enum RunStatus {
+  SUCCESS
+  FALLBACK
+  ERROR
+}
+
+enum UserRole {
+  ADMIN
+  VIEWER
+}
+
+// ---------- Utilisateurs du dashboard ----------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         UserRole @default(VIEWER)
+  createdAt    DateTime @default(now())
+}
+
+// ---------- CRM ----------
+
+model Prospect {
+  id             String         @id @default(uuid())
+  name           String
+  email          String?        @unique
+  phone          String?
+  telegramChatId String?
+  source         String         @default("landing_chat")
+  status         ProspectStatus @default(NEW)
+
+  // Resultat de l'agent de qualification
+  score       Int?
+  temperature Temperature?
+  need        String?
+  budgetEur   Int?
+  urgency     Urgency?
+  reason      String? // justification du score, affichee dans le dashboard
+
+  // Reprise humaine : quand true, les agents se taisent
+  humanTakeover Boolean @default(false)
+
+  lastActivityAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversations Conversation[]
+  appointments  Appointment[]
+  reservations  Reservation[]
+  followUps     FollowUp[]
+  events        AgentEvent[]
+  runs          AgentRun[]
+
+  @@index([status])
+  @@index([lastActivityAt])
+  @@index([temperature])
+}
+
+model Conversation {
+  id         String   @id @default(uuid())
+  prospectId String
+  channel    Channel  @default(WEB_CHAT)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  prospect Prospect  @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([prospectId])
+}
+
+model Message {
+  id             String      @id @default(uuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  createdAt      DateTime    @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+// ---------- Rendez-vous ----------
+
+model Appointment {
+  id            String            @id @default(uuid())
+  prospectId    String
+  productId     String?
+  type          AppointmentType
+  status        AppointmentStatus @default(PROPOSED)
+  startsAt      DateTime
+  endsAt        DateTime
+  googleEventId String? // id de l'evenement dans le calendrier sandbox
+  notes         String?
+  emailSentAt   DateTime?
+  cancelToken   String?           @unique // lien d'annulation dans l'e-mail recap
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  prospect     Prospect      @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  product      Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  reservations Reservation[]
+
+  @@index([startsAt])
+  @@index([prospectId])
+}
+
+// ---------- Stock ----------
+
+model Product {
+  id           String          @id @default(uuid())
+  sku          String          @unique
+  name         String
+  category     ProductCategory
+  priceCents   Int
+  stock        Int             @default(0)
+  reorderLevel Int             @default(0)
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  movements    StockMovement[]
+  reservations Reservation[]
+  appointments Appointment[]
+
+  @@index([category])
+}
+
+model StockMovement {
+  id        String      @id @default(uuid())
+  productId String
+  delta     Int
+  reason    StockReason
+  refType   String? // "reservation" | "appointment" | "manual"...
+  refId     String?
+  createdAt DateTime    @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
+}
+
+model Reservation {
+  id            String            @id @default(uuid())
+  productId     String
+  prospectId    String
+  appointmentId String?
+  quantity      Int               @default(1)
+  status        ReservationStatus @default(ACTIVE)
+  expiresAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  prospect    Prospect     @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([prospectId])
+}
+
+// ---------- Relances ----------
+
+model FollowUp {
+  id           String         @id @default(uuid())
+  prospectId   String
+  channel      Channel
+  content      String
+  status       FollowUpStatus @default(SCHEDULED)
+  attempt      Int            @default(1)
+  scheduledFor DateTime
+  sentAt       DateTime?
+  error        String?
+  createdAt    DateTime       @default(now())
+
+  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduledFor])
+  @@index([prospectId])
+}
+
+// ---------- Tracabilite des agents ----------
+
+// Bus d'evenements : ce qui "relie" les agents et alimente le fil temps reel du dashboard.
+model AgentEvent {
+  id         String    @id @default(uuid())
+  type       String // ex: prospect.created, prospect.qualified, appointment.booked
+  agent      AgentName
+  prospectId String?
+  payload    Json
+  createdAt  DateTime  @default(now())
+
+  prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([prospectId])
+  @@index([type])
+}
+
+// Une execution d'agent : entree, sortie, duree, erreur. Sert a l'explicabilite et au monitoring.
+model AgentRun {
+  id         String    @id @default(uuid())
+  agent      AgentName
+  prospectId String?
+  status     RunStatus @default(SUCCESS)
+  input      Json
+  output     Json?
+  durationMs Int       @default(0)
+  error      String?
+  createdAt  DateTime  @default(now())
+
+  prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+
+  @@index([agent, createdAt])
+  @@index([prospectId])
+}
