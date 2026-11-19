@@ -1,12 +1,22 @@
-import { Controller, Get, NotFoundException, Post, Query, Sse } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  NotFoundException,
+  Post,
+  Query,
+  Sse,
+  UseGuards,
+} from '@nestjs/common';
 import type { MessageEvent } from '@nestjs/common';
 import { filter, interval, map, merge } from 'rxjs';
 import type { Observable } from 'rxjs';
 import { EVENT } from './event-types.js';
 import { EventsService } from './events.service.js';
 import type { AgentEventMessage } from './events.service.js';
+import { DashboardAuthGuard } from '../dashboard/dashboard-auth.guard.js';
 
 @Controller('events')
+@UseGuards(DashboardAuthGuard)
 export class EventsController {
   constructor(private readonly events: EventsService) {}
 

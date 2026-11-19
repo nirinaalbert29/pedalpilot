@@ -11,7 +11,7 @@ export default function Home() {
     <main>
       <header className="topbar page-wrap">
         <a className="brand" href="#top" aria-label="PedalPilot, accueil"><span className="brand-mark" aria-hidden="true">P</span><span>pedalpilot<span className="brand-dot">.</span></span></a>
-        <nav className="nav-links" aria-label="Navigation principale"><a href="#approche">Notre approche</a><a href="#demo">Voir la démo</a></nav>
+        <nav className="nav-links" aria-label="Navigation principale"><a href="#approche">Notre approche</a><a href="#demo">Voir la démo</a><a href="/dashboard">Espace équipe</a></nav>
         <a className="top-cta" href="#demo">Parler à l’assistant <span aria-hidden="true">↗</span></a>
       </header>
 

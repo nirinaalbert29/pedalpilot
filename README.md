@@ -29,4 +29,6 @@ La landing Next.js se trouve dans `apps/web`. Copiez `apps/web/.env.example` ver
 `apps/web/.env.local` pour définir l’URL de l’API. Gardez `WEB_ORIGIN=http://localhost:3000`
 dans `apps/api/.env` pour autoriser le navigateur à appeler l’API locale.
 
+Le dashboard d’équipe est accessible sur `http://localhost:3000/dashboard`. Son API est protégée par `DASHBOARD_API_TOKEN`, à définir dans `apps/api/.env` avant de démarrer l’API.
+
 Details : `docs/ETAPE-1.md`.

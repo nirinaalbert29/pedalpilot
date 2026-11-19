@@ -45,11 +45,18 @@ Tu dois voir `Connecte a PostgreSQL` puis `API prete sur http://localhost:3001`.
 
 ## 4. Tester (3 terminaux PowerShell, utilise `curl.exe` et non `curl`)
 
+Depuis l'etape 4, `/events` et `/events/stream` necessitent `DASHBOARD_API_TOKEN` dans
+`apps/api/.env`. Dans le terminal PowerShell, charge le jeton puis passe-le en Bearer :
+
+```powershell
+$headers = @{ Authorization = "Bearer VOTRE_DASHBOARD_API_TOKEN" }
+```
+
 Terminal 2 :
 
 ```powershell
 curl.exe http://localhost:3001/health
-curl.exe "http://localhost:3001/events?limit=3"
+curl.exe -H "Authorization: Bearer VOTRE_DASHBOARD_API_TOKEN" "http://localhost:3001/events?limit=3"
 ```
 
 - `/health` doit renvoyer `"status":"ok","db":"up"`.
@@ -58,13 +65,13 @@ curl.exe "http://localhost:3001/events?limit=3"
 Terminal 3 (laisse-le ouvert, il attend les evenements) :
 
 ```powershell
-curl.exe -N http://localhost:3001/events/stream
+curl.exe -N -H "Authorization: Bearer VOTRE_DASHBOARD_API_TOKEN" http://localhost:3001/events/stream
 ```
 
 Retour dans le terminal 2 :
 
 ```powershell
-curl.exe -X POST http://localhost:3001/events/test
+curl.exe -X POST -H "Authorization: Bearer VOTRE_DASHBOARD_API_TOKEN" http://localhost:3001/events/test
 ```
 
 Le terminal 3 doit afficher immediatement :
