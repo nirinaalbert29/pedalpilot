@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi Service Alicia — Impression, Téléphonie & Informatique | Fianarantsoa</title>
+<meta name="description" content="Multi Service Alicia à Andrainjato, Fianarantsoa : impression couleur 100 Ar/page, photocopie, plastification, reliure, scan, gravage CD/DVD, vente de téléphones et accessoires, réparation. Rapide, Soigné, De confiance.">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        navy: { 950:'#040a20', 900:'#070f2e', 800:'#0b1a4a', 700:'#122a6e', 600:'#1b3a9e' },
+        gold: { DEFAULT:'#ffce00', light:'#ffe45c', deep:'#f5a300' },
+        royal: '#2b59ff'
+      },
+      fontFamily: {
+        display: ['Sora','sans-serif'],
+        body: ['Outfit','sans-serif']
+      }
+    }
+  }
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --gold:#ffce00; }
+  html { scrollbar-width: thin; scrollbar-color: #f5a300 #070f2e; }
+  ::-webkit-scrollbar { width: 9px; }
+  ::-webkit-scrollbar-track { background:#070f2e; }
+  ::-webkit-scrollbar-thumb { background:linear-gradient(#ffe45c,#f5a300); border-radius:99px; }
+  body { background:#040a20; overflow-x:hidden; }
+  ::selection { background:#ffce00; color:#070f2e; }
+
+  /* ------- fond : grille + orbes ------- */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(43,89,255,.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(43,89,255,.07) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 40%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 40%, transparent 100%);
+  }
+  .orb { position:absolute; border-radius:50%; filter:blur(90px); opacity:.5; will-change:transform; pointer-events:none; }
+  .noise::after{
+    content:""; position:fixed; inset:0; z-index:70; pointer-events:none; opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ------- texte dégradé or ------- */
+  .text-gold-grad{
+    background:linear-gradient(100deg,#ffe45c 10%,#ffce00 40%,#f5a300 75%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .text-stroke{
+    -webkit-text-stroke:1px rgba(255,255,255,.22); color:transparent;
+  }
+
+  /* ------- verre ------- */
+  .glass{
+    background:linear-gradient(150deg, rgba(255,255,255,.07), rgba(255,255,255,.02));
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,.09);
+  }
+  .glass-gold{
+    background:linear-gradient(150deg, rgba(255,206,0,.10), rgba(255,206,0,.02));
+    border:1px solid rgba(255,206,0,.22);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  }
+
+  /* ------- boutons ------- */
+  .btn-gold{
+    position:relative; overflow:hidden; isolation:isolate;
+    background:linear-gradient(100deg,#ffe45c,#ffce00 45%,#f5a300);
+    color:#070f2e; box-shadow:0 8px 30px -8px rgba(255,206,0,.55);
+    transition:transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s;
+  }
+  .btn-gold::after{
+    content:""; position:absolute; inset:0; z-index:-1;
+    background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.65) 50%,transparent 70%);
+    transform:translateX(-120%); transition:transform .6s;
+  }
+  .btn-gold:hover{ transform:translateY(-3px); box-shadow:0 16px 42px -10px rgba(255,206,0,.7); }
+  .btn-gold:hover::after{ transform:translateX(120%); }
+  .btn-ghost{
+    border:1px solid rgba(255,255,255,.18); transition:all .3s;
+  }
+  .btn-ghost:hover{ border-color:rgba(255,206,0,.7); color:#ffce00; transform:translateY(-3px); }
+
+  /* ------- carte service ------- */
+  .svc-card{ position:relative; transition:transform .45s cubic-bezier(.2,.8,.2,1), border-color .45s, box-shadow .45s; overflow:hidden; }
+  .svc-card::before{
+    content:""; position:absolute; inset:0; opacity:0; transition:opacity .45s; pointer-events:none;
+    background:radial-gradient(420px circle at var(--mx,50%) var(--my,50%), rgba(255,206,0,.13), transparent 45%);
+  }
+  .svc-card:hover{ transform:translateY(-8px); border-color:rgba(255,206,0,.45); box-shadow:0 24px 60px -20px rgba(255,206,0,.25); }
+  .svc-card:hover::before{ opacity:1; }
+  .svc-icon{ transition:transform .45s cubic-bezier(.34,1.56,.64,1), background .45s; }
+  .svc-card:hover .svc-icon{ transform:rotate(-8deg) scale(1.12); background:linear-gradient(135deg,#ffe45c,#f5a300); }
+  .svc-card:hover .svc-icon svg{ stroke:#070f2e; }
+
+  /* ------- orbite animée (logo héro) ------- */
+  @keyframes spinSlow { to { transform:rotate(360deg); } }
+  @keyframes spinRev { to { transform:rotate(-360deg); } }
+  @keyframes floatY { 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-16px);} }
+  .orbit-ring{ position:absolute; inset:-14px; border-radius:50%;
+    border:1.5px dashed rgba(255,206,0,.55); animation:spinSlow 22s linear infinite; }
+  .orbit-ring2{ position:absolute; inset:-30px; border-radius:50%;
+    border:1px solid rgba(43,89,255,.35); animation:spinRev 34s linear infinite; }
+  .orbit-dot{ position:absolute; top:-6px; left:50%; width:12px; height:12px; margin-left:-6px;
+    border-radius:50%; background:#ffce00; box-shadow:0 0 18px 4px rgba(255,206,0,.8); }
+  .float-anim{ animation:floatY 6s ease-in-out infinite; }
+  .float-anim-d{ animation:floatY 7.5s ease-in-out 1s infinite; }
+
+  /* ------- marquee ------- */
+  @keyframes marquee { from{ transform:translateX(0);} to{ transform:translateX(-50%);} }
+  .marquee-track{ display:flex; width:max-content; animation:marquee 26s linear infinite; }
+  .marquee-rev{ animation-direction:reverse; }
+
+  /* ------- badge promo défilant ------- */
+  @keyframes shine { 0%{ background-position:-200% center;} 100%{ background-position:200% center;} }
+  .promo-price{
+    background:linear-gradient(110deg,#ffe45c 20%,#fff 40%,#ffce00 60%,#f5a300 80%);
+    background-size:200% auto; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:shine 4s linear infinite;
+  }
+
+  /* ------- reveal par défaut (JS GSAP) ------- */
+  .reveal{ opacity:0; }
+
+  /* ------- curseur lueur ------- */
+  #glow{
+    position:fixed; width:340px; height:340px; border-radius:50%; pointer-events:none; z-index:1;
+    background:radial-gradient(circle, rgba(255,206,0,.10), rgba(43,89,255,.06) 45%, transparent 70%);
+    transform:translate(-50%,-50%); transition:opacity .4s;
+  }
+  @media (hover:none){ #glow{ display:none; } }
+
+  /* ------- préloader ------- */
+  #preloader{ position:fixed; inset:0; z-index:100; background:#040a20;
+    display:flex; align-items:center; justify-content:center; flex-direction:column; gap:24px;
+    transition:opacity .7s, visibility .7s; }
+  #preloader.done{ opacity:0; visibility:hidden; }
+  .loader-ring{ width:120px; height:120px; border-radius:50%; position:relative;
+    border:2px solid rgba(255,206,0,.15); border-top-color:#ffce00; animation:spinSlow 1s linear infinite; }
+  .loader-ring img{ position:absolute; inset:14px; width:calc(100% - 28px); height:calc(100% - 28px); object-fit:contain; animation:spinRev 1s linear infinite; }
+
+  /* ------- chips ------- */
+  .chip{ transition:all .3s; }
+  .chip:hover{ border-color:rgba(255,206,0,.7); color:#ffce00; transform:translateY(-2px); }
+
+  .tilt{ transform-style:preserve-3d; will-change:transform; }
+  .link-underline{ position:relative; }
+  .link-underline::after{ content:""; position:absolute; left:0; bottom:-4px; height:2px; width:0;
+    background:linear-gradient(90deg,#ffe45c,#f5a300); transition:width .35s; }
+  .link-underline:hover::after{ width:100%; }
+</style>
+</head>
+
+<body class="noise font-body text-white antialiased">
+
+<!-- ===================== PRÉLOADER ===================== -->
+<div id="preloader">
+  <div class="loader-ring"><img src="assets/logo-alicia.png" alt="Multi Service Alicia"></div>
+  <p class="font-display tracking-[0.35em] text-xs text-white/50 uppercase">Multi Service Alicia</p>
+</div>
+
+<div id="glow"></div>
+
+<!-- ===================== NAVBAR ===================== -->
+<header id="navbar" class="fixed top-0 inset-x-0 z-50 transition-all duration-500">
+  <nav class="max-w-7xl mx-auto flex items-center justify-between px-5 sm:px-8 py-4">
+    <a href="#accueil" class="flex items-center gap-3 group">
+      <img src="assets/logo-alicia.png" alt="Logo Multi Service Alicia" class="w-11 h-11 object-contain group-hover:rotate-[15deg] transition-transform duration-500">
+      <span class="leading-tight">
+        <span class="block font-display font-800 font-extrabold tracking-wide text-[15px]">MULTI SERVICE <span class="text-gold-grad">ALICIA</span></span>
+        <span class="block text-[10px] tracking-[0.3em] text-white/50 uppercase">Fianarantsoa</span>
+      </span>
+    </a>
+    <div class="hidden lg:flex items-center gap-9 text-sm font-medium text-white/75">
+      <a href="#accueil" class="link-underline hover:text-white transition">Accueil</a>
+      <a href="#services" class="link-underline hover:text-white transition">Services</a>
+      <a href="#promo" class="link-underline hover:text-white transition">Promo 100 Ar</a>
+      <a href="#telephonie" class="link-underline hover:text-white transition">100 Directions</a>
+      <a href="#contact" class="link-underline hover:text-white transition">Contact</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="tel:+261342616250" class="btn-gold hidden sm:inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-semibold text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+        Nous appeler
+      </a>
+      <button id="menuBtn" class="lg:hidden w-11 h-11 rounded-full glass flex flex-col items-center justify-center gap-1.5" aria-label="Menu">
+        <span class="menu-line block w-5 h-0.5 bg-gold transition-all duration-300"></span>
+        <span class="menu-line block w-5 h-0.5 bg-gold transition-all duration-300"></span>
+        <span class="menu-line block w-5 h-0.5 bg-gold transition-all duration-300"></span>
+      </button>
+    </div>
+  </nav>
+  <!-- menu mobile -->
+  <div id="mobileMenu" class="lg:hidden hidden mx-4 mb-4 rounded-2xl glass p-6 flex-col gap-5 text-white/85 font-medium">
+    <a href="#accueil" class="mob-link block py-1">Accueil</a>
+    <a href="#services" class="mob-link block py-1">Services</a>
+    <a href="#promo" class="mob-link block py-1 text-gold">Promo 100 Ar</a>
+    <a href="#telephonie" class="mob-link block py-1">100 Directions</a>
+    <a href="#contact" class="mob-link block py-1">Contact</a>
+    <a href="tel:+261342616250" class="btn-gold rounded-full px-5 py-3 text-center font-semibold">+261 34 26 162 50</a>
+  </div>
+</header>
+
+<!-- ===================== HERO ===================== -->
+<section id="accueil" class="relative min-h-screen flex flex-col justify-center pt-32 pb-16 overflow-hidden">
+  <div class="absolute inset-0 bg-grid"></div>
+  <div class="orb w-[520px] h-[520px] -top-40 -left-40" style="background:#1638b8" data-speed="30"></div>
+  <div class="orb w-[420px] h-[420px] top-1/3 -right-32" style="background:#f5a300; opacity:.28" data-speed="-20"></div>
+  <div class="orb w-[300px] h-[300px] bottom-0 left-1/3" style="background:#2b59ff; opacity:.35" data-speed="15"></div>
+
+  <div class="relative max-w-7xl mx-auto px-5 sm:px-8 grid lg:grid-cols-2 gap-16 items-center w-full">
+    <!-- texte -->
+    <div>
+      <div class="hero-el inline-flex items-center gap-2 rounded-full glass px-4 py-2 text-xs tracking-[0.2em] uppercase text-white/70 mb-7">
+        <span class="w-2 h-2 rounded-full bg-gold animate-pulse"></span>
+        Andrainjato · côté de l'ENS Fianarantsoa
+      </div>
+      <h1 class="hero-el font-display font-extrabold leading-[0.95] text-[clamp(2.6rem,7vw,5.2rem)]">
+        MULTI<br>SERVICE<br><span class="text-gold-grad">ALICIA</span>
+      </h1>
+      <p class="hero-el mt-7 text-lg text-white/65 max-w-lg font-light leading-relaxed">
+        Impression, photocopie, téléphonie, informatique &amp; services numériques.
+        Une seule adresse, tous vos besoins — <span class="text-gold font-medium">Rapide, Soigné, De confiance.</span>
+      </p>
+      <div class="hero-el mt-10 flex flex-wrap gap-4">
+        <a href="#services" class="btn-gold rounded-full px-8 py-4 font-semibold inline-flex items-center gap-2">
+          Découvrir nos services
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12l-7.5 7.5M21 12H3"/></svg>
+        </a>
+        <a href="#promo" class="btn-ghost rounded-full px-8 py-4 font-semibold text-white/85 inline-flex items-center gap-2">
+          Promo · 100 Ar/page
+        </a>
+      </div>
+      <div class="hero-el mt-12 flex flex-wrap gap-x-10 gap-y-5">
+        <div>
+          <p class="font-display font-extrabold text-3xl text-gold-grad">100 Ar</p>
+          <p class="text-xs tracking-widest uppercase text-white/45 mt-1">la page couleur</p>
+        </div>
+        <div class="w-px bg-white/10 hidden sm:block"></div>
+        <div>
+          <p class="font-display font-extrabold text-3xl text-gold-grad">9+</p>
+          <p class="text-xs tracking-widest uppercase text-white/45 mt-1">services proposés</p>
+        </div>
+        <div class="w-px bg-white/10 hidden sm:block"></div>
+        <div>
+          <p class="font-display font-extrabold text-3xl text-gold-grad">2</p>
+          <p class="text-xs tracking-widest uppercase text-white/45 mt-1">boutiques · 2 numéros</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- logo animé -->
+    <div class="hero-el relative flex items-center justify-center lg:justify-end">
+      <div class="relative float-anim">
+        <div class="glass rounded-full p-8 sm:p-12 relative z-10">
+          <img src="assets/logo-alicia.png" alt="Alicia — logo" class="w-48 sm:w-64 lg:w-72 object-contain drop-shadow-[0_20px_50px_rgba(255,206,0,0.25)]">
+        </div>
+        <div class="orbit-ring"><span class="orbit-dot"></span></div>
+        <div class="orbit-ring2"></div>
+        <!-- chips flottantes -->
+        <div class="absolute -left-8 top-6 glass-gold rounded-2xl px-4 py-2.5 text-xs font-semibold float-anim-d z-20 hidden sm:flex items-center gap-2">
+          <svg class="w-4 h-4 text-gold" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659"/></svg>
+          Impression &amp; Copie
+        </div>
+        <div class="absolute -right-6 top-1/3 glass-gold rounded-2xl px-4 py-2.5 text-xs font-semibold float-anim z-20 hidden sm:flex items-center gap-2" style="animation-delay:.8s">
+          <svg class="w-4 h-4 text-gold" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
+          Téléphones
+        </div>
+        <div class="absolute -bottom-4 left-10 glass-gold rounded-2xl px-4 py-2.5 text-xs font-semibold float-anim-d z-20 hidden sm:flex items-center gap-2" style="animation-delay:1.6s">
+          <svg class="w-4 h-4 text-gold" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"/></svg>
+          Réparation
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- indicateur scroll -->
+  <a href="#services" class="absolute bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/35 hover:text-gold transition-colors">
+    <span class="text-[10px] tracking-[0.35em] uppercase">Défiler</span>
+    <span class="w-px h-10 bg-gradient-to-b from-gold to-transparent"></span>
+  </a>
+</section>
+
+<!-- ===================== MARQUEE OR ===================== -->
+<div class="relative -rotate-1 my-4">
+  <div class="bg-gradient-to-r from-gold-light via-gold to-gold-deep py-4 overflow-hidden shadow-[0_10px_50px_-10px_rgba(255,206,0,0.4)]">
+    <div class="marquee-track font-display font-extrabold text-navy-900 text-lg sm:text-xl tracking-wide">
+      <div class="flex items-center gap-8 pr-8 shrink-0" id="mq1"></div>
+      <div class="flex items-center gap-8 pr-8 shrink-0" id="mq2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SERVICES ===================== -->
+<section id="services" class="relative py-28 overflow-hidden">
+  <div class="orb w-[380px] h-[380px] top-20 -left-40" style="background:#1638b8; opacity:.35"></div>
+  <div class="max-w-7xl mx-auto px-5 sm:px-8">
+    <div class="reveal flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-14">
+      <div>
+        <p class="text-gold text-xs tracking-[0.4em] uppercase font-semibold mb-4">— Nos services</p>
+        <h2 class="font-display font-extrabold text-[clamp(2rem,4.5vw,3.4rem)] leading-tight">
+          Tout ce qu'il vous faut,<br><span class="text-gold-grad">au même endroit.</span>
+        </h2>
+      </div>
+      <p class="text-white/50 max-w-sm font-light">De la simple photocopie au mémoire relié, du scan rapide au gravage de vos souvenirs.</p>
+    </div>
+
+    <div id="svcGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+  </div>
+</section>
+
+<!-- ===================== PROMO 100 AR ===================== -->
+<section id="promo" class="relative py-28 overflow-hidden">
+  <div class="orb w-[500px] h-[500px] top-10 -right-52" style="background:#f5a300; opacity:.22"></div>
+  <div class="max-w-7xl mx-auto px-5 sm:px-8">
+    <div class="reveal relative rounded-[2.5rem] overflow-hidden glass p-[1px]">
+      <div class="absolute inset-0 bg-gradient-to-br from-gold/40 via-transparent to-royal/30"></div>
+      <div class="relative rounded-[2.5rem] bg-navy-950/80 backdrop-blur-xl grid lg:grid-cols-2 gap-10 p-8 sm:p-14 items-center">
+
+        <!-- image promo -->
+        <div class="tilt reveal relative order-2 lg:order-1">
+          <div class="absolute -inset-6 bg-gold/20 blur-3xl rounded-full"></div>
+          <img src="assets/promo-impression.png" alt="Promotion impression livre — 100 Ar par page" class="relative rounded-3xl shadow-2xl shadow-black/60 border border-white/10 w-full">
+          <div class="absolute -top-5 -right-4 rotate-6 btn-gold rounded-2xl px-5 py-3 font-display font-extrabold text-sm shadow-xl">
+            NOIR = COULEUR
+          </div>
+        </div>
+
+        <!-- texte promo -->
+        <div class="order-1 lg:order-2">
+          <span class="reveal inline-flex items-center gap-2 rounded-full bg-gold/15 border border-gold/40 text-gold px-4 py-1.5 text-xs font-bold tracking-[0.25em] uppercase">
+            <span class="w-1.5 h-1.5 rounded-full bg-gold animate-ping"></span>
+            Promotion en cours
+          </span>
+          <h2 class="reveal font-display font-extrabold text-[clamp(2rem,4.5vw,3.2rem)] leading-tight mt-6">
+            Impression <span class="text-gold-grad">Livre</span><br>Noir = Couleur
+          </h2>
+          <p class="reveal text-white/60 mt-5 font-light text-lg">Rapport, mémoire, thèse, projet… tout est imprimé <span class="text-gold font-medium">tout en couleur</span>, au prix du noir et blanc.</p>
+
+          <div class="reveal flex items-end gap-3 mt-8">
+            <span class="promo-price font-display font-extrabold text-[clamp(4rem,9vw,6.5rem)] leading-none">100</span>
+            <div class="pb-3">
+              <p class="font-display font-bold text-2xl text-gold">Ar</p>
+              <p class="text-white/50 text-sm">/ page · couleur</p>
+            </div>
+          </div>
+
+          <ul class="reveal mt-8 space-y-3 text-white/75">
+            <li class="flex items-center gap-3"><span class="w-6 h-6 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center shrink-0"><svg class="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>Rapide · Qualité · Abordable</li>
+            <li class="flex items-center gap-3"><span class="w-6 h-6 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center shrink-0"><svg class="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>Mise en page de votre document incluse sur demande</li>
+            <li class="flex items-center gap-3"><span class="w-6 h-6 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center shrink-0"><svg class="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg></span>Reliure soignée pour mémoires &amp; thèses</li>
+          </ul>
+
+          <a href="tel:+261342616250" class="reveal btn-gold rounded-full px-8 py-4 font-semibold inline-flex items-center gap-2 mt-9">
+            Commander maintenant
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 100 DIRECTIONS / TÉLÉPHONIE ===================== -->
+<section id="telephonie" class="relative py-28 overflow-hidden">
+  <div class="orb w-[420px] h-[420px] bottom-0 -left-48" style="background:#2b59ff; opacity:.3"></div>
+  <div class="max-w-7xl mx-auto px-5 sm:px-8">
+    <div class="reveal grid lg:grid-cols-5 gap-12 items-center">
+
+      <!-- logo 100 directions -->
+      <div class="lg:col-span-2 reveal">
+        <div class="glass rounded-[2.5rem] p-10 flex flex-col items-center text-center relative overflow-hidden">
+          <div class="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-gold/10 blur-2xl"></div>
+          <img src="assets/logo-100-directions.png" alt="100 Directions — Smartphones, Ordinateurs, Composants" class="w-full max-w-xs object-contain float-anim">
+          <p class="mt-6 text-xs tracking-[0.35em] uppercase text-gold font-semibold">Smartphones · Ordinateurs · Composants</p>
+        </div>
+      </div>
+
+      <!-- contenu -->
+      <div class="lg:col-span-3">
+        <p class="reveal text-gold text-xs tracking-[0.4em] uppercase font-semibold mb-4">— Vente en premier phone</p>
+        <h2 class="reveal font-display font-extrabold text-[clamp(2rem,4.5vw,3.4rem)] leading-tight">
+          Téléphones, accessoires<br>&amp; <span class="text-gold-grad">réparation.</span>
+        </h2>
+        <p class="reveal text-white/55 mt-5 font-light text-lg max-w-xl">Smartphones toutes marques, accessoires complets et service de réparation — par l'équipe de <span class="text-white/85 font-medium">100 Directions</span>, au même quartier.</p>
+
+        <div class="reveal grid sm:grid-cols-2 gap-3 mt-9">
+          <div class="chip glass rounded-2xl px-5 py-4 flex items-center gap-3 text-white/80">
+            <svg class="w-5 h-5 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
+            Smartphone toute marque
+          </div>
+          <div class="chip glass rounded-2xl px-5 py-4 flex items-center gap-3 text-white/80">
+            <svg class="w-5 h-5 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg>
+            Housse phone toute marque
+          </div>
+          <div class="chip glass rounded-2xl px-5 py-4 flex items-center gap-3 text-white/80">
+            <svg class="w-5 h-5 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+            Cache-écran (verre trempé)
+          </div>
+          <div class="chip glass rounded-2xl px-5 py-4 flex items-center gap-3 text-white/80">
+            <svg class="w-5 h-5 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"/></svg>
+            Écouteurs &amp; casques
+          </div>
+          <div class="chip glass rounded-2xl px-5 py-4 flex items-center gap-3 text-white/80">
+            <svg class="w-5 h-5 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+            Chargeurs &amp; câbles
+          </div>
+          <div class="chip glass rounded-2xl px-5 py-4 flex items-center gap-3 text-white/80">
+            <svg class="w-5 h-5 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+            Accessoires divers
+          </div>
+        </div>
+
+        <div class="reveal mt-9 flex flex-wrap items-center gap-4">
+          <a href="tel:+261340897294" class="btn-gold rounded-full px-8 py-4 font-semibold inline-flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+            100 Directions · +261 34 08 972 94
+          </a>
+          <span class="text-white/40 text-sm">Réparation · Téléphones · Accessoires complets</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MARQUEE 2 (slogan) ===================== -->
+<div class="relative rotate-1 my-4">
+  <div class="glass-gold py-4 overflow-hidden">
+    <div class="marquee-track marquee-rev font-display font-bold text-gold text-lg sm:text-xl tracking-wide">
+      <div class="flex items-center gap-8 pr-8 shrink-0" id="mq3"></div>
+      <div class="flex items-center gap-8 pr-8 shrink-0" id="mq4"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ENGAGEMENTS ===================== -->
+<section class="relative py-28">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8">
+    <div class="reveal text-center mb-14">
+      <p class="text-gold text-xs tracking-[0.4em] uppercase font-semibold mb-4">— Pourquoi nous</p>
+      <h2 class="font-display font-extrabold text-[clamp(2rem,4.5vw,3.4rem)] leading-tight">Qualité <span class="text-stroke">·</span> Service <span class="text-stroke">·</span> <span class="text-gold-grad">Confiance</span></h2>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="reveal svc-card glass rounded-3xl p-8 text-center">
+        <div class="svc-icon w-16 h-16 mx-auto rounded-2xl bg-royal/20 border border-royal/30 flex items-center justify-center">
+          <svg class="w-8 h-8" fill="none" stroke="#7ea0ff" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+        </div>
+        <h3 class="font-display font-bold text-xl mt-6">Rapide</h3>
+        <p class="text-white/50 text-sm mt-3 font-light">Vos documents prêts en un temps record, sans compromis.</p>
+      </div>
+      <div class="reveal svc-card glass rounded-3xl p-8 text-center">
+        <div class="svc-icon w-16 h-16 mx-auto rounded-2xl bg-royal/20 border border-royal/30 flex items-center justify-center">
+          <svg class="w-8 h-8" fill="none" stroke="#7ea0ff" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z"/></svg>
+        </div>
+        <h3 class="font-display font-bold text-xl mt-6">Qualité</h3>
+        <p class="text-white/50 text-sm mt-3 font-light">Un rendu net, précis et soigné — chaque fois.</p>
+      </div>
+      <div class="reveal svc-card glass rounded-3xl p-8 text-center">
+        <div class="svc-icon w-16 h-16 mx-auto rounded-2xl bg-royal/20 border border-royal/30 flex items-center justify-center">
+          <svg class="w-8 h-8" fill="none" stroke="#7ea0ff" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z"/></svg>
+        </div>
+        <h3 class="font-display font-bold text-xl mt-6">Abordable</h3>
+        <p class="text-white/50 text-sm mt-3 font-light">Des prix étudiants : la couleur au prix du noir &amp; blanc.</p>
+      </div>
+      <div class="reveal svc-card glass rounded-3xl p-8 text-center">
+        <div class="svc-icon w-16 h-16 mx-auto rounded-2xl bg-royal/20 border border-royal/30 flex items-center justify-center">
+          <svg class="w-8 h-8" fill="none" stroke="#7ea0ff" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+        </div>
+        <h3 class="font-display font-bold text-xl mt-6">De confiance</h3>
+        <p class="text-white/50 text-sm mt-3 font-light">À votre service depuis des années, à deux pas de l'ENS.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CONTACT ===================== -->
+<section id="contact" class="relative py-28 overflow-hidden">
+  <div class="orb w-[460px] h-[460px] -bottom-32 left-1/2 -translate-x-1/2" style="background:#1638b8; opacity:.4"></div>
+  <div class="max-w-5xl mx-auto px-5 sm:px-8">
+    <div class="reveal relative rounded-[2.5rem] overflow-hidden glass p-[1px]">
+      <div class="absolute inset-0 bg-gradient-to-tr from-royal/40 via-transparent to-gold/40"></div>
+      <div class="relative rounded-[2.5rem] bg-navy-950/85 backdrop-blur-xl px-8 sm:px-14 py-14 text-center">
+        <img src="assets/logo-alicia.png" alt="" class="w-20 h-20 object-contain mx-auto mb-6 float-anim">
+        <p class="text-gold text-xs tracking-[0.4em] uppercase font-semibold mb-4">— Contact</p>
+        <h2 class="font-display font-extrabold text-[clamp(1.9rem,4.5vw,3.2rem)] leading-tight">Passez nous voir,<br>ou appelez-nous.</h2>
+
+        <div class="flex items-center justify-center gap-3 mt-8 text-white/75">
+          <svg class="w-6 h-6 text-gold shrink-0" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+          <p class="text-lg">Andrainjato — <span class="text-gold font-medium">côté de l'ENS</span>, Fianarantsoa</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-4 mt-10 max-w-2xl mx-auto">
+          <a href="tel:+261342616250" class="btn-gold rounded-2xl px-6 py-5 font-display font-bold text-lg inline-flex items-center justify-center gap-3">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+            034 26 162 50
+          </a>
+          <a href="tel:+261340897294" class="btn-ghost rounded-2xl px-6 py-5 font-display font-bold text-lg inline-flex items-center justify-center gap-3 text-white/90">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z"/></svg>
+            034 08 972 94
+          </a>
+        </div>
+        <p class="mt-6 text-white/40 text-sm">Multi Service Alicia · 100 Directions — même quartier, même exigence.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="relative border-t border-white/8 py-12">
+  <div class="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+    <div class="flex items-center gap-3">
+      <img src="assets/logo-alicia.png" alt="" class="w-10 h-10 object-contain">
+      <div class="leading-tight">
+        <p class="font-display font-bold text-sm">MULTI SERVICE <span class="text-gold-grad">ALICIA</span></p>
+        <p class="text-[11px] text-white/40">Rapide · Soigné · De confiance</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-6 text-sm text-white/50">
+      <a href="#services" class="hover:text-gold transition">Services</a>
+      <a href="#promo" class="hover:text-gold transition">Promo</a>
+      <a href="#telephonie" class="hover:text-gold transition">100 Directions</a>
+      <a href="#contact" class="hover:text-gold transition">Contact</a>
+    </div>
+    <p class="text-xs text-white/35">© 2026 Multi Service Alicia — Fianarantsoa, Madagascar</p>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+/* ---------- préloader ---------- */
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('preloader').classList.add('done'), 600);
+});
+
+/* ---------- données : services & marquees ---------- */
+const SERVICES = [
+  { t:'Impression', d:'Documents, photos, dossiers… noir & blanc ou couleur, rendu impeccable.',
+    i:'<path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659"/>' },
+  { t:'Photocopie', d:'Noir & blanc / Couleur, du simple recto à vos gros volumes.',
+    i:'<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75"/>' },
+  { t:'Reliure', d:'Réduction / agrandissement et reliure soignée de vos documents.',
+    i:'<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/>' },
+  { t:'Scan', d:'Numérisation vers clé USB ou email, rapide et net.',
+    i:'<path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>' },
+  { t:'Manasa sary', d:'Photos tapaka · lava, pour tous vos souvenirs.',
+    i:'<path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z"/>' },
+  { t:'Plastification', d:'Diplôme et tout document important, protégés durablement.',
+    i:'<path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm4.125-9.75a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z"/>' },
+  { t:'Mise en page Livre', d:'Rapport, mémoire, thèse… mise en page propre et professionnelle.',
+    i:'<path stroke-linecap="round" stroke-linejoin="round" d="M10.125 2.25h3.75c.621 0 1.125.504 1.125 1.125v17.25c0 .621-.504 1.125-1.125 1.125h-3.75a1.125 1.125 0 01-1.125-1.125V3.375c0-.621.504-1.125 1.125-1.125zM16.5 4.5h2.25A1.125 1.125 0 0119.875 5.625v15.75c0 .621-.504 1.125-1.125 1.125H16.5M3.75 5.25H6a1.125 1.125 0 011.125 1.125v13.5A1.125 1.125 0 016 20.999H3.75A1.125 1.125 0 012.625 19.874V6.375A1.125 1.125 0 013.75 5.25z"/>' },
+  { t:'Gravage CD / DVD', d:'Musique, vidéo, données… vos fichiers gravés avec soin.',
+    i:'<path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/>' },
+  { t:'Installation OS', d:'Installation système d\'exploitation Windows & Linux.',
+    i:'<path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"/>' },
+];
+document.getElementById('svcGrid').innerHTML = SERVICES.map((s, idx) => `
+  <div class="reveal svc-card glass rounded-3xl p-7">
+    <div class="flex items-start justify-between">
+      <div class="svc-icon w-14 h-14 rounded-2xl bg-royal/20 border border-royal/30 flex items-center justify-center">
+        <svg class="w-7 h-7" fill="none" stroke="#7ea0ff" stroke-width="1.7" viewBox="0 0 24 24">${s.i}</svg>
+      </div>
+      <span class="font-display font-extrabold text-white/8 text-4xl">0${idx+1}</span>
+    </div>
+    <h3 class="font-display font-bold text-lg mt-5">${s.t}</h3>
+    <p class="text-white/50 text-sm mt-2 font-light leading-relaxed">${s.d}</p>
+  </div>`).join('');
+
+const MARQUEE_ITEMS = ['IMPRESSION','PHOTOCOPIE','PLASTIFICATION','SCAN','RELIURE','GRAVAGE CD/DVD','MANASA SARY','TÉLÉPHONES','ACCESSOIRES','RÉPARATION','WINDOWS & LINUX'];
+const mqHTML = MARQUEE_ITEMS.map(t => `<span>${t}</span><svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>`).join('');
+document.getElementById('mq1').innerHTML = mqHTML;
+document.getElementById('mq2').innerHTML = mqHTML;
+
+const SLOGANS = ['RAPIDE','SOIGNÉ','DE CONFIANCE','QUALITÉ','SERVICE','ABORDABLE'];
+const slHTML = SLOGANS.map(t => `<span>${t}</span><svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/></svg>`).join('');
+document.getElementById('mq3').innerHTML = slHTML;
+document.getElementById('mq4').innerHTML = slHTML;
+
+/* ---------- spotlight sur cartes ---------- */
+document.addEventListener('mousemove', e => {
+  document.querySelectorAll('.svc-card').forEach(c => {
+    const r = c.getBoundingClientRect();
+    c.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+    c.style.setProperty('--my', (e.clientY - r.top) + 'px');
+  });
+});
+
+/* ---------- lueur curseur ---------- */
+const glow = document.getElementById('glow');
+window.addEventListener('mousemove', e => {
+  glow.style.left = e.clientX + 'px';
+  glow.style.top = e.clientY + 'px';
+});
+
+/* ---------- navbar au scroll ---------- */
+const nav = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 40) {
+    nav.classList.add('glass','shadow-lg','shadow-black/30');
+  } else {
+    nav.classList.remove('glass','shadow-lg','shadow-black/30');
+  }
+}, { passive:true });
+
+/* ---------- menu mobile ---------- */
+const menuBtn = document.getElementById('menuBtn');
+const mobileMenu = document.getElementById('mobileMenu');
+menuBtn.addEventListener('click', () => {
+  const open = mobileMenu.classList.toggle('hidden');
+  mobileMenu.classList.toggle('flex', open === false);
+  const lines = menuBtn.querySelectorAll('.menu-line');
+  if (open === false) {
+    lines[0].style.transform = 'translateY(7px) rotate(45deg)';
+    lines[1].style.opacity = '0';
+    lines[2].style.transform = 'translateY(-7px) rotate(-45deg)';
+  } else {
+    lines.forEach(l => { l.style.transform = ''; l.style.opacity = ''; });
+  }
+});
+document.querySelectorAll('.mob-link').forEach(a => a.addEventListener('click', () => {
+  mobileMenu.classList.add('hidden'); mobileMenu.classList.remove('flex');
+  menuBtn.querySelectorAll('.menu-line').forEach(l => { l.style.transform = ''; l.style.opacity = ''; });
+}));
+
+/* ---------- GSAP ---------- */
+gsap.registerPlugin(ScrollTrigger);
+
+gsap.from('.hero-el', { y: 60, opacity: 0, duration: 1.1, stagger: 0.12, ease: 'power3.out', delay: 0.9 });
+
+gsap.utils.toArray('.reveal').forEach(el => {
+  gsap.fromTo(el, { y: 50, opacity: 0 }, {
+    y: 0, opacity: 1, duration: 0.9, ease: 'power3.out',
+    scrollTrigger: { trigger: el, start: 'top 88%' }
+  });
+});
+
+/* orbes parallaxe */
+gsap.utils.toArray('.orb').forEach(orb => {
+  gsap.to(orb, {
+    yPercent: parseFloat(orb.dataset.speed || 20),
+    ease: 'none',
+    scrollTrigger: { trigger: orb.parentElement, start: 'top bottom', end: 'bottom top', scrub: 1.4 }
+  });
+});
+
+/* tilt image promo */
+const tilt = document.querySelector('.tilt');
+if (tilt && matchMedia('(hover:hover)').matches) {
+  tilt.addEventListener('mousemove', e => {
+    const r = tilt.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    gsap.to(tilt, { rotateY: x * 10, rotateX: -y * 10, transformPerspective: 900, duration: 0.5 });
+  });
+  tilt.addEventListener('mouseleave', () => gsap.to(tilt, { rotateX: 0, rotateY: 0, duration: 0.8, ease: 'elastic.out(1,0.5)' }));
+}
+</script>
+</body>
+</html>
