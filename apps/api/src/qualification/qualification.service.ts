@@ -234,7 +234,8 @@ export class QualificationService implements OnModuleInit, OnModuleDestroy {
     );
     const mode: 'ai' | 'fallback' = generated ? 'ai' : 'fallback';
     const qualification =
-      generated ?? this.fallback(message.content, inventory, prospect.name);
+      generated ??
+      this.fallback(message.content, orderedHistory, inventory, prospect.name);
     const temperature: Temperature =
       qualification.score >= 75
         ? 'HOT'
@@ -352,9 +353,35 @@ export class QualificationService implements OnModuleInit, OnModuleDestroy {
     const transcript = history
       .map((item) => `${item.role}: ${item.content}`)
       .join('\n');
+    const prospectText = history
+      .filter((item) => item.role === 'PROSPECT')
+      .map((item) => item.content)
+      .join('\n')
+      .toLocaleLowerCase('fr');
+    const knownFacts = {
+      mentionedBikeOrService:
+        /gravel|v[eé]lo|vtt|route|cargo|[eé]lectrique|r[eé]par|pneu|frein|r[eé]vision|crevaison/i.test(
+          prospectText,
+        ),
+      mentionedBudget:
+        /\b\d{2,5}\s*(?:€|euros?\b|eur\b)|\b(?:budget|environ|autour de)\s*\d{2,5}\b/i.test(
+          prospectText,
+        ),
+      mentionedUsage:
+        /route|chemin|sentier|trajet|ville|urbain|quotidien|week.?end|sortie|balade|terrain|sport|comp[eé]tition|voyage|randonn[eé]e/i.test(
+          prospectText,
+        ),
+      mentionedTiming:
+        /urgent|rapidement|demain|aujourd'hui|cette semaine|bient[oô]t|prochain|semaine prochaine/i.test(
+          prospectText,
+        ),
+    };
     const system = [
       'Tu es le conseiller commercial de PedalPilot, un atelier et magasin de vélos. Réponds uniquement en français, naturellement et brièvement.',
-      'Aide à comprendre le besoin et pose au plus une question utile. Ne confirme jamais un rendez-vous ni une réservation.',
+      'Lis tout l’historique avant de répondre. Les informations déjà données par le prospect (type de vélo ou service, budget, usage, terrain, délai et préférences) sont acquises : ne les redemande pas, même avec une autre formulation.',
+      'Réponds d’abord au dernier message en tenant compte du contexte. Pose au plus une question, uniquement si une précision manque réellement. Toute question doit inclure entre parenthèses 2 ou 3 exemples concrets de réponses possibles. Si le besoin est déjà assez clair, donne une réponse utile sans reposer une question de qualification.',
+      `État des informations déjà mentionnées (true signifie ne pas reposer cette question) : ${JSON.stringify(knownFacts)}`,
+      'Ne confirme jamais un rendez-vous ni une réservation.',
       'Le catalogue JSON ci-dessous est la seule source de vérité sur les produits et stocks. Ne prétends pas qu’un article est disponible s’il n’y figure pas avec availableUnits supérieur à zéro.',
       'Évalue le prospect sans inventer d’informations. Score entier de 0 à 100; need est une courte description; budgetEur entier ou null; urgency vaut LOW, MEDIUM, HIGH ou null.',
       'Retourne uniquement un objet JSON avec reply, need, budgetEur, urgency, score, productSku, reason. productSku doit être un SKU du catalogue ou null.',
@@ -403,12 +430,17 @@ export class QualificationService implements OnModuleInit, OnModuleDestroy {
 
   private fallback(
     message: string,
+    history: Array<{ role: string; content: string }>,
     inventory: InventoryItem[],
     prospectName: string,
   ): Qualification {
-    const text = message.toLocaleLowerCase('fr');
+    const prospectHistory = history
+      .filter((item) => item.role === 'PROSPECT')
+      .map((item) => item.content);
+    const context = [...prospectHistory, message].join('\n');
+    const text = context.toLocaleLowerCase('fr');
     const amount =
-      text.match(/(?:\b|\s)(\d{2,5})\s*(?:€|euros?|eur)\b/i) ??
+      text.match(/(?:\b|\s)(\d{2,5})\s*(?:€|euros?\b|eur\b)/i) ??
       text.match(/\b(?:budget|environ|autour de)\s*(\d{2,5})\b/i);
     const budgetEur = amount ? Number.parseInt(amount[1], 10) : null;
     const urgency: Urgency | null =
@@ -424,6 +456,10 @@ export class QualificationService implements OnModuleInit, OnModuleDestroy {
         : /v[eé]lo|vtt|route|cargo|[eé]lectrique/.test(text)
           ? 'Recherche ou conseil autour d’un vélo'
           : null;
+    const usageKnown =
+      /route|chemin|sentier|trajet|ville|urbain|quotidien|week.?end|sortie|balade|terrain|sport|comp[eé]tition|voyage|randonn[eé]e/i.test(
+        text,
+      );
     const product = inventory.find(
       (item) =>
         item.stock > 0 &&
@@ -447,9 +483,13 @@ export class QualificationService implements OnModuleInit, OnModuleDestroy {
     const productText = product
       ? ` Le ${product.name} est actuellement en stock (${product.stock} disponible${product.stock > 1 ? 's' : ''}) à ${(product.priceCents / 100).toFixed(2)} €.`
       : '';
-    const question = budgetEur
-      ? 'Pour mieux vous orienter, quel type de trajet ou de pratique avez-vous en tête ?'
-      : 'Quel budget souhaitez-vous prévoir et pour quel usage ?';
+    const question = !need
+      ? 'Quel vélo ou quel service recherchez-vous ? (ex. gravel, VTT, vélo électrique, révision)'
+      : !budgetEur
+        ? 'Quel budget souhaitez-vous prévoir ? (ex. 800 €, autour de 1 200 €, budget flexible)'
+        : !usageKnown
+          ? 'Vous roulerez surtout sur quel type de terrain ? (ex. route, chemins, un mélange des deux)'
+          : 'Souhaitez-vous que je vous propose les modèles disponibles qui correspondent à votre recherche ? (ex. oui, comparer plusieurs modèles)';
     return {
       reply: `${greeting}je peux vous aider à trouver la bonne solution.${productText} ${question}`,
       need,

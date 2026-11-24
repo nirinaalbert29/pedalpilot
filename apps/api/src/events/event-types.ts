@@ -16,7 +16,9 @@ export const EVENT = {
 
   // Rendez-vous
   APPOINTMENT_BOOKED: 'appointment.booked',
+  APPOINTMENT_PROPOSED: 'appointment.proposed',
   APPOINTMENT_CANCELLED: 'appointment.cancelled',
+  APPOINTMENT_COMPLETED: 'appointment.completed',
 
   // Stock
   STOCK_RESERVED: 'stock.reserved',
@@ -25,7 +27,10 @@ export const EVENT = {
 
   // Relances
   FOLLOWUP_SENT: 'followup.sent',
+  FOLLOWUP_SCHEDULED: 'followup.scheduled',
   FOLLOWUP_CANCELLED: 'followup.cancelled',
+  FOLLOWUP_FAILED: 'followup.failed',
+  STOCK_MOVED: 'stock.moved',
 
   // Systeme
   TIME_ACCELERATED: 'time.accelerated',

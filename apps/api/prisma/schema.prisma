@@ -87,6 +87,7 @@ enum ReservationStatus {
 
 enum FollowUpStatus {
   SCHEDULED
+  PROCESSING
   SENT
   CANCELLED
   FAILED
@@ -128,6 +129,8 @@ model Prospect {
   id             String         @id @default(uuid())
   name           String
   email          String?        @unique
+  emailFollowUpConsent Boolean  @default(false)
+  emailOptOutToken String?       @unique
   phone          String?
   telegramChatId String?
   source         String         @default("landing_chat")
@@ -274,6 +277,7 @@ model FollowUp {
   status       FollowUpStatus @default(SCHEDULED)
   attempt      Int            @default(1)
   scheduledFor DateTime
+  processingAt DateTime?
   sentAt       DateTime?
   error        String?
   createdAt    DateTime       @default(now())

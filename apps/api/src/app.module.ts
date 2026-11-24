@@ -7,6 +7,8 @@ import { AppService } from './app.service.js';
 import { EventsModule } from './events/events.module.js';
 import { HealthModule } from './health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { SchedulingModule } from './scheduling/scheduling.module.js';
+import { FollowupsModule } from './followups/followups.module.js';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
     PrismaModule,
     ChatModule,
     DashboardModule,
+    SchedulingModule,
+    FollowupsModule,
     EventsModule,
     HealthModule,
   ],

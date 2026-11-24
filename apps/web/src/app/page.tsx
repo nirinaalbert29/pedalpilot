@@ -1,4 +1,5 @@
 import { ChatWidget } from '@/components/chat-widget';
+import { CancelAppointment } from '@/components/cancel-appointment';
 
 const benefits = [
   { number: '01', title: 'Toujours disponible', text: 'Chaque cycliste reçoit une réponse, même quand votre équipe est en atelier.' },
@@ -6,7 +7,10 @@ const benefits = [
   { number: '03', title: 'Le bon échange, au bon moment', text: 'Besoins, budget et projet sont résumés pour faciliter la reprise par votre équipe.' },
 ];
 
-export default function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ cancelAppointment?: string }> }) {
+  const { cancelAppointment } = await searchParams;
+  if (cancelAppointment) return <CancelAppointment token={cancelAppointment} />;
+
   return (
     <main>
       <header className="topbar page-wrap">

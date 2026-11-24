@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { ProspectStatus, Temperature } from '@prisma/client';
 import { EventsService } from '../events/events.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { FollowupsService } from '../followups/followups.service.js';
 
 const statuses = new Set<ProspectStatus>([
   'NEW',
@@ -18,6 +19,7 @@ export class DashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventsService,
+    private readonly followupAutomation: FollowupsService,
   ) {}
 
   async summary() {
@@ -124,5 +126,64 @@ export class DashboardService {
     });
     if (!prospect) throw new NotFoundException('Prospect introuvable.');
     return prospect;
+  }
+
+  products() {
+    return this.prisma.product.findMany({
+      where: { active: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, sku: true, name: true, category: true, priceCents: true, stock: true, reorderLevel: true },
+    });
+  }
+
+  followups(prospectId?: string) {
+    return this.followupAutomation.list(prospectId);
+  }
+
+  retryFollowup(id: string) {
+    return this.followupAutomation.retry(id);
+  }
+
+  async setHumanTakeover(id: string, enabled: boolean) {
+    const prospect = await this.prisma.prospect.findUnique({ where: { id }, select: { id: true, humanTakeover: true } });
+    if (!prospect) throw new NotFoundException('Prospect introuvable.');
+    if (prospect.humanTakeover === enabled) return { id, humanTakeover: enabled };
+    await this.prisma.prospect.update({ where: { id }, data: { humanTakeover: enabled } });
+    if (enabled) await this.followupAutomation.cancelForProspect(id, 'human_takeover');
+    await this.events.emit({
+      type: enabled ? 'conversation.human_takeover' : 'conversation.human_released',
+      agent: 'ORCHESTRATOR',
+      prospectId: id,
+      payload: { by: 'dashboard' },
+    });
+    return { id, humanTakeover: enabled };
+  }
+
+  async moveStock(id: string, input: { reason?: string; quantity?: number; delta?: number }) {
+    const reason = typeof input.reason === 'string' ? input.reason.toUpperCase() : '';
+    const quantity = Number(input.quantity);
+    if (!['RESTOCK', 'SALE', 'ADJUSTMENT'].includes(reason ?? '')) {
+      throw new BadRequestException('reason doit être RESTOCK, SALE ou ADJUSTMENT.');
+    }
+    const delta = reason === 'RESTOCK' ? quantity : reason === 'SALE' ? -quantity : Number(input.delta);
+    if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 100_000 || ((reason === 'RESTOCK' || reason === 'SALE') && (!Number.isInteger(quantity) || quantity < 1))) {
+      throw new BadRequestException('La quantité doit être un entier valide et non nul.');
+    }
+    const product = await this.prisma.product.findUnique({ where: { id }, select: { id: true, sku: true, name: true, stock: true, reorderLevel: true, active: true } });
+    if (!product || !product.active) throw new NotFoundException('Produit introuvable ou inactif.');
+    const result = await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.product.updateMany({
+        where: { id, active: true, ...(delta < 0 ? { stock: { gte: -delta } } : {}) },
+        data: { stock: { increment: delta } },
+      });
+      if (!changed.count) throw new ConflictException('Stock insuffisant pour cette opération.');
+      await tx.stockMovement.create({ data: { productId: id, delta, reason: reason as 'RESTOCK' | 'SALE' | 'ADJUSTMENT', refType: 'DASHBOARD' } });
+      return tx.product.findUniqueOrThrow({ where: { id }, select: { id: true, sku: true, name: true, stock: true, reorderLevel: true } });
+    });
+    await this.events.emit({ type: 'stock.moved', agent: 'INVENTORY', payload: { productId: id, sku: product.sku, name: product.name, delta, reason, stock: result.stock } });
+    if (result.stock <= result.reorderLevel) {
+      await this.events.emit({ type: 'stock.low', agent: 'INVENTORY', payload: { productId: id, sku: product.sku, name: product.name, stock: result.stock, reorderLevel: result.reorderLevel } });
+    }
+    return result;
   }
 }

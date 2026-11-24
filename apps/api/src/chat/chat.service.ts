@@ -1,6 +1,7 @@
 ﻿import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -8,20 +9,25 @@ import { EventsService } from '../events/events.service.js';
 import { EVENT } from '../events/event-types.js';
 import { QualificationService } from '../qualification/qualification.service.js';
 import type { ChatResponse } from '../qualification/qualification.service.js';
+import { FollowupsService } from '../followups/followups.service.js';
 
 export interface ChatRequest {
   message: string;
   name?: string;
   email?: string;
+  emailFollowUpConsent?: boolean;
   prospectId?: string;
 }
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventsService,
     private readonly qualification: QualificationService,
+    private readonly followups: FollowupsService,
   ) {}
 
   async send(input: ChatRequest): Promise<ChatResponse> {
@@ -73,6 +79,27 @@ export class ChatService {
     let conversationId: string;
     if (existing) {
       prospectId = existing.id;
+      if (email && existing.email !== email) {
+        const emailOwner = await this.prisma.prospect.findUnique({
+          where: { email },
+          select: { id: true },
+        });
+        if (emailOwner && emailOwner.id !== existing.id) {
+          throw new BadRequestException(
+            'Cette adresse e-mail est déjà associée à un autre prospect.',
+          );
+        }
+        await this.prisma.prospect.update({
+          where: { id: existing.id },
+          data: { email },
+        });
+      }
+      if (typeof input.emailFollowUpConsent === 'boolean') {
+        await this.prisma.prospect.update({
+          where: { id: existing.id },
+          data: { emailFollowUpConsent: Boolean(email && input.emailFollowUpConsent) },
+        });
+      }
       let conversation = existing.conversations[0];
       if (!conversation) {
         conversation = await this.prisma.conversation.create({
@@ -85,6 +112,7 @@ export class ChatService {
         data: {
           name: name || 'Nouveau prospect',
           ...(email ? { email } : {}),
+          emailFollowUpConsent: Boolean(email && input.emailFollowUpConsent),
           source: 'landing_chat',
           conversations: { create: { channel: 'WEB_CHAT' } },
         },
@@ -110,10 +138,17 @@ export class ChatService {
       });
     }
 
-    return this.qualification.submit({
+    await this.followups.cancelForProspect(prospectId, 'new_incoming_message');
+    const response = await this.qualification.submit({
       messageId: userMessage.id,
       conversationId,
       prospectId,
     });
+    try {
+      await this.followups.scheduleAfterMessage(prospectId);
+    } catch (error) {
+      this.logger.warn(`Planification de relance impossible pour ${prospectId}: ${error instanceof Error ? error.message : 'erreur inconnue'}`);
+    }
+    return response;
   }
 }

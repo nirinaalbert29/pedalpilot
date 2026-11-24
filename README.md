@@ -4,7 +4,7 @@ Systeme multi-agents IA pour un atelier/boutique de velos : qualification des pr
 prise de rendez-vous synchronisee avec un calendrier, relances automatiques multicanales,
 gestion de stock, et un dashboard temps reel pour superviser les agents.
 
-> README complet (architecture, choix techniques, scenario de test) : en cours de redaction.
+> Architecture, responsabilités des modules, flux de relance et limites actuelles : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Structure
 
@@ -32,3 +32,12 @@ dans `apps/api/.env` pour autoriser le navigateur à appeler l’API locale.
 Le dashboard d’équipe est accessible sur `http://localhost:3000/dashboard`. Son API est protégée par `DASHBOARD_API_TOKEN`, à définir dans `apps/api/.env` avant de démarrer l’API.
 
 Details : `docs/ETAPE-1.md`.
+
+Guides complémentaires :
+
+- `docs/ETAPE-4.md` — dashboard et flux temps réel
+- `docs/ETAPE-5.md` — Google Calendar et rendez-vous
+- `docs/ETAPE-6.md` — réservation et e-mail de confirmation
+- `docs/ETAPE-7.md` — disponibilités, consentement aux relances et stock
+- `docs/N8N-GMAIL.md` — e-mail de confirmation via n8n et Gmail
+- `docs/N8N-RELANCES.md` — workflow n8n des relances
