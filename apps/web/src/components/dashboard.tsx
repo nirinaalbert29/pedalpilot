@@ -8,10 +8,10 @@ type ProspectStatus = 'NEW' | 'QUALIFIED' | 'APPOINTMENT_BOOKED' | 'FOLLOWING_UP
 type AgentEvent = { id: string; type: string; agent: string; prospectId: string | null; payload: Record<string, unknown>; createdAt: string; persisted?: boolean };
 type Appointment = { id: string; type: 'REPAIR' | 'TEST_RIDE' | 'PURCHASE' | 'FITTING'; status: string; startsAt: string; endsAt: string; notes: string | null; productId?: string | null; product?: { id: string; name: string } | null; googleEventId?: string | null; calendarSync?: { status: 'synced' | 'not_configured' | 'failed'; message?: string }; calendarCancelSync?: 'deleted' | 'not_configured' | 'not_synced' | 'failed'; emailSync?: 'sent' | 'not_configured' | 'no_email' | 'failed'; stockReservation?: 'reserved' | 'not_requested' };
 type InventoryProduct = { id: string; sku: string; name: string; category: string; priceCents: number; stock: number; reorderLevel: number };
-type FollowUp = { id: string; prospectId: string; channel: string; content: string; status: string; attempt: number; scheduledFor: string; sentAt: string | null; error: string | null; prospect: { name: string; email: string | null } };
+type FollowUp = { id: string; prospectId: string; channel: string; content: string; status: string; attempt: number; scheduledFor: string; sentAt: string | null; error: string | null; prospect: { name: string; email: string | null; phone: string | null } };
 type Message = { id: string; role: 'PROSPECT' | 'AGENT' | 'HUMAN' | 'SYSTEM'; content: string; createdAt: string };
 type Prospect = {
-  id: string; name: string; email: string | null; source: string; status: ProspectStatus; score: number | null;
+  id: string; name: string; email: string | null; phone?: string | null; source: string; status: ProspectStatus; score: number | null;
   temperature: Temperature; need: string | null; budgetEur: number | null; urgency: string | null;
   humanTakeover: boolean; lastActivityAt: string; createdAt: string;
   conversations: { id: string; messages: Pick<Message, 'content' | 'role' | 'createdAt'>[] }[];
@@ -19,6 +19,7 @@ type Prospect = {
 type ProspectDetail = Omit<Prospect, 'conversations'> & { conversations: { id: string; messages: Message[] }[]; events?: AgentEvent[]; reason?: string | null };
 type Summary = { prospects: number; hotProspects: number; newThisWeek: number; qualified: number; lowStock: number; recentEvents: AgentEvent[] };
 type Filter = 'ALL' | 'NEW' | 'QUALIFIED' | 'HOT';
+type StockFilter = 'ALL' | 'LOW' | 'AVAILABLE';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const initialSummary: Summary = { prospects: 0, hotProspects: 0, newThisWeek: 0, qualified: 0, lowStock: 0, recentEvents: [] };
@@ -80,6 +81,8 @@ export function Dashboard() {
   const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [followups, setFollowups] = useState<FollowUp[]>([]);
   const [stockQuantities, setStockQuantities] = useState<Record<string, number>>({});
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockFilter, setStockFilter] = useState<StockFilter>('ALL');
   const [appointmentAt, setAppointmentAt] = useState('');
   const [appointmentType, setAppointmentType] = useState<Appointment['type']>('TEST_RIDE');
   const [appointmentProductId, setAppointmentProductId] = useState('');
@@ -91,6 +94,21 @@ export function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [live, setLive] = useState(false);
+  const lowStockCount = useMemo(() => products.filter((product) => product.stock <= product.reorderLevel).length, [products]);
+  const visibleProducts = useMemo(() => {
+    const query = stockSearch.trim().toLocaleLowerCase('fr-FR');
+    return products
+      .filter((product) => {
+        const isLow = product.stock <= product.reorderLevel;
+        const matchesFilter = stockFilter === 'ALL' || (stockFilter === 'LOW' ? isLow : product.stock > 0);
+        const searchable = (product.name + ' ' + product.sku + ' ' + product.category).toLocaleLowerCase('fr-FR');
+        return matchesFilter && (!query || searchable.includes(query));
+      })
+      .sort((left, right) => {
+        const urgency = Number(right.stock <= right.reorderLevel) - Number(left.stock <= left.reorderLevel);
+        return urgency || left.name.localeCompare(right.name, 'fr-FR');
+      });
+  }, [products, stockFilter, stockSearch]);
 
   const signIn = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -374,19 +392,32 @@ export function Dashboard() {
 
         {error && <div className={styles.errorBanner} role="alert"><span>!</span>{error}<button onClick={() => setError('')} aria-label="Fermer">×</button></div>}
 
-        <section className={styles.prospectPanel} style={{ marginBottom: 20, overflow: 'hidden' }} aria-label="Gestion du stock">
-          <div className={styles.panelHeading}><div><h2>Stock boutique</h2><p>Réapprovisionnements et ventes mis à jour dans l’historique</p></div><span className={styles.resultsCount}>{products.length} articles</span></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 1, background: '#edf0e9' }}>
-            {products.map((product) => <article key={product.id} style={{ padding: '12px 16px', background: 'white', display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px 12px', alignItems: 'center' }}>
-              <div><strong style={{ fontSize: 12 }}>{product.name}</strong><small style={{ display: 'block', color: '#879087', marginTop: 3 }}>{product.sku} · seuil {product.reorderLevel}</small></div>
-              <strong style={{ color: product.stock <= product.reorderLevel ? '#c56c42' : '#304a3e', fontSize: 15 }}>{product.stock}</strong>
-              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input aria-label={`Quantité pour ${product.name}`} type="number" min={1} max={1000} value={stockQuantities[product.id] ?? 1} onChange={(event) => setStockQuantities((current) => ({ ...current, [product.id]: Number(event.target.value) }))} style={{ width: 58, padding: '6px', border: '1px solid #e2e7dd', borderRadius: 6 }} />
-                <button type="button" onClick={() => void recordStockMovement(product, 'RESTOCK')} style={{ padding: '6px 9px', border: '1px solid #dfe6d7', borderRadius: 6, background: '#f5f8ef', color: '#304a3e', cursor: 'pointer', fontSize: 10 }}>Réapprovisionner</button>
-                <button type="button" disabled={product.stock < (stockQuantities[product.id] ?? 1)} onClick={() => void recordStockMovement(product, 'SALE')} style={{ padding: '6px 9px', border: '1px solid #e7e9e2', borderRadius: 6, background: 'white', color: '#59655b', cursor: 'pointer', fontSize: 10 }}>Enregistrer une vente</button>
-                <button type="button" title="Le champ quantité représente le stock total compté" onClick={() => void adjustStockCount(product)} style={{ padding: '6px 9px', border: '1px solid #e7e9e2', borderRadius: 6, background: 'white', color: '#59655b', cursor: 'pointer', fontSize: 10 }}>Ajuster le comptage</button>
-              </div>
-            </article>)}
+        <section className={[styles.prospectPanel, styles.stockPanel].join(' ')} aria-label="Gestion du stock">
+          <div className={styles.panelHeading}><div><h2>Stock boutique</h2><p>Réapprovisionnements et ventes mis à jour dans l’historique</p></div><span className={styles.resultsCount}>{visibleProducts.length} / {products.length} articles</span></div>
+          <div className={styles.stockTools}>
+            <label className={[styles.searchBox, styles.stockSearch].join(' ')}><span aria-hidden="true">⌕</span><input value={stockSearch} onChange={(event) => setStockSearch(event.target.value)} placeholder="Rechercher un produit ou une référence…" aria-label="Rechercher dans le stock" /></label>
+            <div className={styles.stockFilters} aria-label="Filtrer les produits">
+              {([['ALL', 'Tous', products.length], ['LOW', 'Stock bas', lowStockCount], ['AVAILABLE', 'Disponibles', products.filter((product) => product.stock > 0).length]] as [StockFilter, string, number][]).map(([value, label, count]) => <button key={value} type="button" aria-pressed={stockFilter === value} className={[styles.stockFilter, stockFilter === value ? styles.stockFilterActive : ''].filter(Boolean).join(' ')} onClick={() => setStockFilter(value)}>{label}<span>{count}</span></button>)}
+            </div>
+          </div>
+          <div className={styles.stockGrid}>
+            {visibleProducts.map((product) => {
+              const isLow = product.stock <= product.reorderLevel;
+              return <article key={product.id} className={styles.stockCard}>
+                <div className={styles.stockCardHeading}>
+                  <div className={styles.stockProductInfo}><strong title={product.name}>{product.name}</strong><small>{product.sku} · {product.category}</small></div>
+                  <div className={[styles.stockOnHand, isLow ? styles.stockOnHandLow : ''].filter(Boolean).join(' ')}><strong>{product.stock}</strong><span>en stock</span></div>
+                </div>
+                <div className={styles.stockCardMeta}><span className={[styles.stockStatus, isLow ? styles.stockStatusLow : styles.stockStatusAvailable].join(' ')}>{isLow ? 'À réapprovisionner' : 'Disponible'}</span><span className={styles.stockThreshold}>Seuil · {product.reorderLevel}</span></div>
+                <div className={styles.stockActions}>
+                  <label className={styles.stockQuantity}><span>Qté / comptage</span><input aria-label={'Quantité ou stock compté pour ' + product.name} type="number" min={0} max={1000} step={1} value={stockQuantities[product.id] ?? 1} onChange={(event) => setStockQuantities((current) => ({ ...current, [product.id]: Number(event.target.value) }))} /></label>
+                  <button type="button" className={[styles.stockAction, styles.stockRestock].join(' ')} disabled={(stockQuantities[product.id] ?? 1) < 1} onClick={() => void recordStockMovement(product, 'RESTOCK')}>Réapprovisionner</button>
+                  <button type="button" className={styles.stockAction} disabled={(stockQuantities[product.id] ?? 1) < 1 || product.stock < (stockQuantities[product.id] ?? 1)} onClick={() => void recordStockMovement(product, 'SALE')}>Enregistrer une vente</button>
+                  <button type="button" className={styles.stockAction} title="La quantité saisie devient le stock réellement compté" onClick={() => void adjustStockCount(product)}>Ajuster le comptage</button>
+                </div>
+              </article>;
+            })}
+            {!visibleProducts.length && <div className={styles.stockEmpty}><strong>Aucun produit trouvé</strong><span>Modifiez la recherche ou le filtre sélectionné.</span></div>}
           </div>
         </section>
         <div className={styles.mainGrid}>
@@ -434,7 +465,7 @@ export function Dashboard() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '12px 0' }}><button type="button" onClick={() => void setTakeover(!detail.humanTakeover)} style={{ border: 0, borderRadius: 7, padding: '8px 10px', background: detail.humanTakeover ? '#edf3dc' : '#304a3e', color: detail.humanTakeover ? '#304a3e' : 'white', cursor: 'pointer' }}>{detail.humanTakeover ? 'Réactiver les agents' : 'Prendre la main'}</button><small style={{ color: '#778178' }}>{detail.humanTakeover ? 'Relances et réponses IA suspendues.' : 'Les réponses et relances IA sont actives.'}</small></div>
           <div className={styles.detailStats}><div><small>Score</small><strong>{detail.score ?? '—'}{detail.score !== null && <small>/100</small>}</strong></div><div><small>Budget estimé</small><strong>{detail.budgetEur !== null ? `${detail.budgetEur.toLocaleString('fr-FR')} €` : '—'}</strong></div><div><small>Urgence</small><strong>{detail.urgency ?? '—'}</strong></div></div>
           <section className={styles.detailSection}><h3>Besoin identifié</h3><p>{detail.need || 'Le besoin sera précisé au fil de la conversation.'}</p>{detail.reason && <small>{detail.reason}</small>}</section>
-          <section className={styles.detailSection}><h3>Coordonnées</h3><p>{detail.email || 'Adresse e-mail non fournie'}</p><small>Entrée via {detail.source.replaceAll('_', ' ')} · créé le {formatDate(detail.createdAt, false)}</small></section>
+          <section className={styles.detailSection}><h3>Coordonnées</h3><p>{detail.email || 'Adresse e-mail non fournie'}{detail.phone && <><br />{detail.phone}</>}</p><small>Entrée via {detail.source.replaceAll('_', ' ')} · créé le {formatDate(detail.createdAt, false)}</small></section>
           <section className={styles.appointmentSection}>
             <div className={styles.conversationTitle}><h3>Rendez-vous</h3><span>Propositions locales</span></div>
             {appointments.map((appointment) => <div className={styles.appointmentItem} key={appointment.id}><span>◷</span><div><strong>{({ TEST_RIDE: 'Essai vélo', PURCHASE: 'Conseil achat', REPAIR: 'Atelier', FITTING: 'Étude posturale' })[appointment.type]}</strong><small>{formatDate(appointment.startsAt)} · {appointment.status === 'PROPOSED' ? 'À confirmer' : appointment.status}</small>{appointment.product && <small>Réservé : {appointment.product.name}</small>}{appointment.googleEventId && appointment.status !== 'CANCELLED' ? <small>Synchronisé avec Google Calendar</small> : appointment.status !== 'CANCELLED' && <button className={styles.syncCalendarButton} type="button" onClick={() => void syncAppointment(appointment.id)}>Synchroniser avec Google Calendar</button>}{['PROPOSED', 'CONFIRMED'].includes(appointment.status) && <div className={styles.appointmentActions}>{new Date(appointment.endsAt) <= new Date() && <button type="button" onClick={() => void changeAppointmentStatus(appointment.id, 'complete')}>Terminer</button>}<button type="button" onClick={() => void changeAppointmentStatus(appointment.id, 'cancel')}>Annuler</button></div>}{appointment.status === 'CANCELLED' && appointment.googleEventId && appointment.calendarCancelSync !== 'deleted' && <button className={styles.syncCalendarButton} type="button" onClick={() => void changeAppointmentStatus(appointment.id, 'cancel')}>Réessayer la suppression dans Google Calendar</button>}</div></div>)}
@@ -448,7 +479,7 @@ export function Dashboard() {
               <button type="submit" disabled={!appointmentAt || savingAppointment}>{savingAppointment ? 'Enregistrement…' : 'Proposer ce créneau'} <span>→</span></button>
             </form>
           </section>
-          <section className={styles.detailSection}><h3>Suivi automatisé</h3>{followups.length ? followups.map((item) => <article key={item.id} style={{ padding: '8px 0', borderBottom: '1px solid #edf0e9' }}><strong style={{ fontSize: 11 }}>Relance {item.attempt} · {item.status === 'SCHEDULED' ? 'programmée' : item.status === 'PROCESSING' ? 'en cours' : item.status === 'SENT' ? 'envoyée' : item.status === 'FAILED' ? 'en échec' : 'annulée'}</strong><small style={{ display: 'block', color: '#818981', marginTop: 3 }}>{item.status === 'SENT' && item.sentAt ? `Envoyée le ${formatDate(item.sentAt)}` : `Prévue le ${formatDate(item.scheduledFor)}`}{item.error ? ` · ${item.error}` : ''}</small>{item.content && <p>{item.content}</p>}{item.status === 'FAILED' && <button type="button" onClick={() => void retryFollowup(item.id)}>Réessayer</button>}</article>) : <p>Aucune relance prévue. Elle ne sera créée qu’après le consentement explicite du prospect.</p>}</section>
+          <section className={styles.detailSection}><h3>Suivi automatisé</h3>{followups.length ? followups.map((item) => <article key={item.id} style={{ padding: '8px 0', borderBottom: '1px solid #edf0e9' }}><strong style={{ fontSize: 11 }}>Relance {item.attempt} · {item.channel === 'WHATSAPP' ? 'WhatsApp' : 'e-mail'} · {item.status === 'SCHEDULED' ? 'programmée' : item.status === 'PROCESSING' ? 'en cours' : item.status === 'SENT' ? 'envoyée' : item.status === 'FAILED' ? 'en échec' : 'annulée'}</strong><small style={{ display: 'block', color: '#818981', marginTop: 3 }}>{item.status === 'SENT' && item.sentAt ? `Envoyée le ${formatDate(item.sentAt)}` : `Prévue le ${formatDate(item.scheduledFor)}`}{item.error ? ` · ${item.error}` : ''}</small>{item.content && <p>{item.content}</p>}{item.status === 'FAILED' && <button type="button" onClick={() => void retryFollowup(item.id)}>Réessayer</button>}</article>) : <p>Aucune relance prévue. Elle ne sera créée qu’après le consentement explicite du prospect.</p>}</section>
           <section className={styles.conversationSection}><div className={styles.conversationTitle}><h3>Conversation</h3><span>{detail.conversations[0]?.messages.length ?? 0} messages</span></div>
             <div className={styles.messageHistory}>{detail.conversations[0]?.messages.map((message) => <article key={message.id} className={`${styles.historyMessage} ${message.role === 'PROSPECT' ? styles.fromProspect : styles.fromAgent}`}><span>{message.role === 'PROSPECT' ? detail.name : message.role === 'HUMAN' ? 'Conseiller' : 'PedalPilot IA'}</span><p>{message.content}</p><time>{formatDate(message.createdAt)}</time></article>)}{!detail.conversations[0]?.messages.length && <p className={styles.emptyEvents}>Aucun message enregistré.</p>}</div>
           </section>

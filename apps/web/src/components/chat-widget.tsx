@@ -7,6 +7,7 @@ type ChatReply = { prospectId: string; conversationId: string; reply: string; mo
 type BookingType = 'REPAIR' | 'TEST_RIDE' | 'PURCHASE' | 'FITTING';
 type Slot = { startsAt: string; endsAt: string; label: string };
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const WHATSAPP_FOLLOWUPS_ENABLED = process.env.NEXT_PUBLIC_WHATSAPP_FOLLOWUPS_ENABLED === 'true';
 const intro: ChatMessage = { role: 'assistant', content: 'Bonjour ! Je peux vous aider à trouver un vélo adapté à votre pratique. Vous cherchez quel type de vélo ?' };
 
 export function ChatWidget() {
@@ -15,7 +16,9 @@ export function ChatWidget() {
   const [message, setMessage] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [followUpConsent, setFollowUpConsent] = useState(false);
+  const [whatsAppFollowUpConsent, setWhatsAppFollowUpConsent] = useState(false);
   const [prospectId, setProspectId] = useState<string>();
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingDone, setBookingDone] = useState(false);
@@ -51,12 +54,16 @@ export function ChatWidget() {
     event?.preventDefault();
     const trimmed = message.trim();
     if (!trimmed || sending) return;
+    if (whatsAppFollowUpConsent && !phone.trim()) {
+      setError('Ajoutez votre numéro au format international pour accepter les relances WhatsApp.');
+      return;
+    }
     setMessages((current) => [...current, { role: 'user', content: trimmed }]);
     setMessage(''); setError(''); setSending(true);
     try {
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed, ...(name.trim() ? { name: name.trim() } : {}), ...(email.trim() ? { email: email.trim() } : {}), emailFollowUpConsent: followUpConsent, ...(prospectId ? { prospectId } : {}) }),
+        body: JSON.stringify({ message: trimmed, ...(name.trim() ? { name: name.trim() } : {}), ...(email.trim() ? { email: email.trim() } : {}), ...(phone.trim() ? { phone: phone.trim() } : {}), emailFollowUpConsent: followUpConsent, whatsappFollowUpConsent: whatsAppFollowUpConsent, ...(prospectId ? { prospectId } : {}) }),
       });
       const data = (await response.json()) as ChatReply | { message?: string };
       if (!response.ok) throw new Error('message' in data && data.message ? data.message : 'Le message n’a pas pu être envoyé.');
@@ -103,7 +110,9 @@ export function ChatWidget() {
       </div>
       {!prospectId && <label className="name-field">Votre prénom <span>(facultatif)</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Camille" autoComplete="given-name" /></label>}
       <label className="name-field">Votre e-mail <span>(facultatif)</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="camille@exemple.fr" autoComplete="email" /><small>Associé à votre fiche quand vous envoyez un message.</small></label>
-      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '6px 16px 0', fontSize: 9, lineHeight: 1.4, color: '#767e76' }}><input type="checkbox" style={{ marginTop: 1 }} checked={followUpConsent} onChange={(event) => setFollowUpConsent(event.target.checked)} />J’accepte de recevoir par e-mail un suivi de ma demande. Je peux arrêter à tout moment.</label>
+      {WHATSAPP_FOLLOWUPS_ENABLED && <label className="name-field">Votre téléphone <span>(facultatif)</span><input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+261 34 12 345 67" autoComplete="tel" /><small>Format international, avec l’indicatif du pays.</small></label>}
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '6px 16px 0', fontSize: 10, lineHeight: 1.45, color: '#767e76' }}><input type="checkbox" style={{ marginTop: 1 }} checked={followUpConsent} onChange={(event) => setFollowUpConsent(event.target.checked)} />J’accepte de recevoir par e-mail un suivi de ma demande par PedalPilot. Je peux arrêter à tout moment.</label>
+      {WHATSAPP_FOLLOWUPS_ENABLED && <label style={{ display: 'flex', alignItems: 'flex-start', gap: 7, padding: '6px 16px 2px', fontSize: 10, lineHeight: 1.45, color: '#767e76' }}><input type="checkbox" style={{ marginTop: 1 }} checked={whatsAppFollowUpConsent} onChange={(event) => setWhatsAppFollowUpConsent(event.target.checked)} />J’accepte de recevoir des relances PedalPilot sur WhatsApp à ce numéro. Je peux arrêter à tout moment.</label>}
       {prospectId && !bookingDone && <button style={{ margin: '7px 14px 0', border: '1px solid #dfe6d7', borderRadius: 8, padding: '8px 10px', background: '#f6f8f2', color: '#304a3e', fontSize: 11, cursor: 'pointer' }} type="button" onClick={() => { setBookingOpen((value) => !value); setError(''); }}>{bookingOpen ? 'Masquer les créneaux' : 'Prendre rendez-vous'}</button>}
       {bookingOpen && <div style={{ margin: '7px 14px 0', padding: 10, borderRadius: 9, background: '#f6f8f2', fontSize: 11 }}><label>Motif<select style={{ display: 'block', width: '100%', marginTop: 5, padding: 7, border: '1px solid #dfe6d7', borderRadius: 6, background: 'white' }} value={bookingType} onChange={(event) => setBookingType(event.target.value as BookingType)}><option value="TEST_RIDE">Essai vélo · 45 min</option><option value="PURCHASE">Conseil achat · 30 min</option><option value="REPAIR">Atelier · 1 h</option><option value="FITTING">Étude posturale · 1 h</option></select></label>{loadingSlots ? <small>Recherche des disponibilités…</small> : slots.length ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, maxHeight: 112, overflow: 'auto', marginTop: 8 }}>{slots.map((slot) => <button style={{ border: '1px solid #dfe6d7', borderRadius: 6, background: 'white', padding: '6px 7px', fontSize: 10, cursor: 'pointer' }} key={slot.startsAt} type="button" disabled={bookingBusy || !email.trim()} onClick={() => void bookSlot(slot)}>{slot.label}</button>)}</div> : <small>Aucun créneau libre cette semaine. Essayez une autre date plus tard.</small>}{!email.trim() && <small style={{ display: 'block', marginTop: 6 }}>Renseignez votre e-mail pour recevoir la confirmation.</small>}</div>}
       <form className="chat-form" onSubmit={(event) => void sendMessage(event)}><input ref={inputRef} value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={handleInputKeyDown} placeholder="Écrivez votre message…" maxLength={2000} aria-label="Votre message" /><button type="submit" disabled={sending || !message.trim()} aria-label="Envoyer le message">↑</button></form>

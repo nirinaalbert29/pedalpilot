@@ -16,6 +16,8 @@ export interface ChatRequest {
   name?: string;
   email?: string;
   emailFollowUpConsent?: boolean;
+  phone?: string;
+  whatsappFollowUpConsent?: boolean;
   prospectId?: string;
 }
 
@@ -47,7 +49,11 @@ export class ChatService {
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       throw new BadRequestException('Adresse e-mail invalide.');
     }
-
+    const rawPhone = typeof input.phone === 'string' ? input.phone.trim() : '';
+    const phone = rawPhone ? rawPhone.replace(/[\s().-]/g, '') : '';
+    if (phone && !/^\+[1-9]\d{7,14}$/.test(phone)) {
+      throw new BadRequestException('Saisissez un numéro au format international, par exemple +261 34 12 345 67.');
+    }
     const existing = input.prospectId
       ? await this.prisma.prospect.findUnique({
           where: { id: input.prospectId },
@@ -73,6 +79,9 @@ export class ChatService {
         : null;
     if (input.prospectId && !existing)
       throw new NotFoundException('Prospect introuvable.');
+    if (input.whatsappFollowUpConsent && !phone && !existing?.phone) {
+      throw new BadRequestException('Un numéro de téléphone est nécessaire pour accepter les relances WhatsApp.');
+    }
 
     const isNew = !existing;
     let prospectId: string;
@@ -100,6 +109,19 @@ export class ChatService {
           data: { emailFollowUpConsent: Boolean(email && input.emailFollowUpConsent) },
         });
       }
+      if (phone || typeof input.whatsappFollowUpConsent === 'boolean') {
+        await this.prisma.prospect.update({
+          where: { id: existing.id },
+          data: {
+            ...(phone ? { phone } : {}),
+            ...(typeof input.whatsappFollowUpConsent === 'boolean'
+              ? { whatsappFollowUpConsent: Boolean((phone || existing.phone) && input.whatsappFollowUpConsent) }
+              : phone && phone !== existing.phone
+                ? { whatsappFollowUpConsent: false }
+              : {}),
+          },
+        });
+      }
       let conversation = existing.conversations[0];
       if (!conversation) {
         conversation = await this.prisma.conversation.create({
@@ -113,6 +135,8 @@ export class ChatService {
           name: name || 'Nouveau prospect',
           ...(email ? { email } : {}),
           emailFollowUpConsent: Boolean(email && input.emailFollowUpConsent),
+          ...(phone ? { phone } : {}),
+          whatsappFollowUpConsent: Boolean(phone && input.whatsappFollowUpConsent),
           source: 'landing_chat',
           conversations: { create: { channel: 'WEB_CHAT' } },
         },

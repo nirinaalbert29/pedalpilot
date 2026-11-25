@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { FollowUpStatus } from '@prisma/client';
+import type { Channel, FollowUpStatus, Prospect } from '@prisma/client';
 import { EventsService } from '../events/events.service.js';
 import { EVENT } from '../events/event-types.js';
 import { LlmService } from '../ai/llm.service.js';
@@ -26,23 +26,29 @@ export class FollowupsService {
     });
     const prospect = await this.prisma.prospect.findUnique({ where: { id: prospectId } });
     if (!prospect || !this.canContact(prospect)) return null;
-    let optOutToken = prospect.emailOptOutToken;
+    const channels: Channel[] = [];
+    if (this.canContact(prospect, 'EMAIL')) channels.push('EMAIL');
+    if (this.config.get<string>('WHATSAPP_FOLLOWUPS_ENABLED') === 'true' && this.canContact(prospect, 'WHATSAPP')) channels.push('WHATSAPP');
+    if (!channels.length) return null;
+    let optOutToken = prospect.followUpOptOutToken;
     if (!optOutToken) {
       optOutToken = randomBytes(32).toString('hex');
-      await this.prisma.prospect.update({ where: { id: prospectId }, data: { emailOptOutToken: optOutToken } });
+      await this.prisma.prospect.update({ where: { id: prospectId }, data: { followUpOptOutToken: optOutToken } });
     }
     const firstDelayMinutes = this.positiveConfigNumber('FOLLOWUP_FIRST_DELAY_MINUTES', 24 * 60, 1, 30 * 24 * 60);
     const scheduledFor = new Date(Date.now() + firstDelayMinutes * 60_000);
-    const followUp = await this.prisma.followUp.create({
-      data: { prospectId, channel: 'EMAIL', content: '', attempt: 1, scheduledFor, status: 'SCHEDULED' },
-    });
-    await this.events.emit({
-      type: EVENT.FOLLOWUP_SCHEDULED,
-      agent: 'FOLLOWUP',
-      prospectId,
-      payload: { followUpId: followUp.id, attempt: 1, scheduledFor: scheduledFor.toISOString() },
-    });
-    return followUp;
+    const followUps = await this.prisma.$transaction(channels.map((channel) => this.prisma.followUp.create({
+      data: { prospectId, channel, content: '', attempt: 1, scheduledFor, status: 'SCHEDULED' },
+    })));
+    for (const followUp of followUps) {
+      await this.events.emit({
+        type: EVENT.FOLLOWUP_SCHEDULED,
+        agent: 'FOLLOWUP',
+        prospectId,
+        payload: { followUpId: followUp.id, channel: followUp.channel, attempt: 1, scheduledFor: scheduledFor.toISOString() },
+      });
+    }
+    return followUps;
   }
 
   async cancelForProspect(prospectId: string, reason = 'prospect_activity') {
@@ -68,9 +74,9 @@ export class FollowupsService {
       take: Math.min(Math.max(limit, 1), 10),
       include: { prospect: true },
     });
-    const output: Array<{ followUpId: string; email: string; subject: string; html: string; unsubscribeUrl: string; attempt: number }> = [];
+    const output: Array<Record<string, string | number>> = [];
     for (const candidate of candidates) {
-      if (!this.canContact(candidate.prospect) || await this.hasUpcomingAppointment(candidate.prospectId)) {
+      if (!this.canContact(candidate.prospect, candidate.channel) || await this.hasUpcomingAppointment(candidate.prospectId)) {
         await this.prisma.followUp.updateMany({ where: { id: candidate.id, status: 'SCHEDULED' }, data: { status: 'CANCELLED', error: 'Contact non autorisé ou rendez-vous planifié.' } });
         continue;
       }
@@ -95,15 +101,30 @@ export class FollowupsService {
       }
       await this.prisma.followUp.update({ where: { id: candidate.id }, data: { content } });
       const origin = (this.config.get<string>('WEB_ORIGIN') ?? 'http://localhost:3000').replace(/\/$/, '');
-      const unsubscribeUrl = `${origin}/opt-out?token=${encodeURIComponent(prospect.emailOptOutToken ?? '')}`;
-      output.push({
-        followUpId: candidate.id,
-        email: prospect.email!,
-        subject: candidate.attempt === 1 ? 'Votre projet vélo — PedalPilot' : 'Dernier suivi de votre demande — PedalPilot',
-        html: `<p>${escapeHtml(content)}</p><p>Répondez simplement à cet e-mail si vous souhaitez reprendre l’échange.</p><hr><p style="font-size:12px;color:#667">Vous ne souhaitez plus recevoir de suivi ? <a href="${escapeHtml(unsubscribeUrl)}">Gérer mes préférences</a></p>`,
-        unsubscribeUrl,
-        attempt: candidate.attempt,
-      });
+      const unsubscribeUrl = `${origin}/opt-out?token=${encodeURIComponent(prospect.followUpOptOutToken ?? '')}`;
+      if (candidate.channel === 'EMAIL' && prospect.email) {
+        output.push({
+          followUpId: candidate.id,
+          channel: 'EMAIL',
+          email: prospect.email,
+          subject: candidate.attempt === 1 ? 'Votre projet vélo — PedalPilot' : 'Dernier suivi de votre demande — PedalPilot',
+          html: `<p>${escapeHtml(content)}</p><p>Répondez simplement à cet e-mail si vous souhaitez reprendre l’échange.</p><hr><p style="font-size:12px;color:#667">Vous ne souhaitez plus recevoir de suivi ? <a href="${escapeHtml(unsubscribeUrl)}">Gérer mes préférences</a></p>`,
+          unsubscribeUrl,
+          attempt: candidate.attempt,
+        });
+      } else if (candidate.channel === 'WHATSAPP' && prospect.phone) {
+        output.push({
+          followUpId: candidate.id,
+          channel: 'WHATSAPP',
+          phone: prospect.phone,
+          firstName,
+          message: content,
+          unsubscribeUrl,
+          attempt: candidate.attempt,
+        });
+      } else {
+        await this.prisma.followUp.update({ where: { id: candidate.id }, data: { status: 'CANCELLED', processingAt: null, error: 'Canal de contact indisponible.' } });
+      }
     }
     return output;
   }
@@ -133,11 +154,11 @@ export class FollowupsService {
       const conversation = await this.prisma.conversation.findFirst({ where: { prospectId: current.prospectId, channel: 'WEB_CHAT' }, orderBy: { updatedAt: 'desc' } });
       if (conversation) await this.prisma.message.create({ data: { conversationId: conversation.id, role: 'AGENT', content: current.content } });
       await this.events.emit({ type: EVENT.FOLLOWUP_SENT, agent: 'FOLLOWUP', prospectId: current.prospectId, payload: { followUpId: id, channel: current.channel, attempt: current.attempt } });
-      if (current.attempt < 2 && this.canContact(current.prospect) && !(await this.hasUpcomingAppointment(current.prospectId))) {
+      if (current.attempt < 2 && this.canContact(current.prospect, current.channel) && !(await this.hasUpcomingAppointment(current.prospectId))) {
         const secondDelayHours = this.positiveConfigNumber('FOLLOWUP_SECOND_DELAY_HOURS', 72, 1, 24 * 30);
         const scheduledFor = new Date(Date.now() + secondDelayHours * 60 * 60_000);
-        const followUp = await this.prisma.followUp.create({ data: { prospectId: current.prospectId, channel: 'EMAIL', content: '', attempt: 2, scheduledFor, status: 'SCHEDULED' } });
-        await this.events.emit({ type: EVENT.FOLLOWUP_SCHEDULED, agent: 'FOLLOWUP', prospectId: current.prospectId, payload: { followUpId: followUp.id, attempt: 2, scheduledFor: scheduledFor.toISOString() } });
+        const followUp = await this.prisma.followUp.create({ data: { prospectId: current.prospectId, channel: current.channel, content: '', attempt: 2, scheduledFor, status: 'SCHEDULED' } });
+        await this.events.emit({ type: EVENT.FOLLOWUP_SCHEDULED, agent: 'FOLLOWUP', prospectId: current.prospectId, payload: { followUpId: followUp.id, channel: followUp.channel, attempt: 2, scheduledFor: scheduledFor.toISOString() } });
       }
     } else {
       await this.events.emit({ type: EVENT.FOLLOWUP_FAILED, agent: 'FOLLOWUP', prospectId: current.prospectId, payload: { followUpId: id, attempt: current.attempt, error: result.error ?? 'delivery_failed' } });
@@ -150,7 +171,7 @@ export class FollowupsService {
       where: prospectId ? { prospectId } : undefined,
       orderBy: [{ scheduledFor: 'desc' }],
       take: 100,
-      select: { id: true, prospectId: true, channel: true, content: true, status: true, attempt: true, scheduledFor: true, sentAt: true, error: true, prospect: { select: { name: true, email: true } } },
+      select: { id: true, prospectId: true, channel: true, content: true, status: true, attempt: true, scheduledFor: true, sentAt: true, error: true, prospect: { select: { name: true, email: true, phone: true } } },
     });
   }
 
@@ -163,15 +184,18 @@ export class FollowupsService {
   async unsubscribe(token: string) {
     const normalized = typeof token === 'string' ? token.trim() : '';
     if (!/^[a-f0-9]{64}$/i.test(normalized)) throw new NotFoundException('Lien de désinscription invalide.');
-    const prospect = await this.prisma.prospect.findUnique({ where: { emailOptOutToken: normalized } });
+    const prospect = await this.prisma.prospect.findUnique({ where: { followUpOptOutToken: normalized } });
     if (!prospect) throw new NotFoundException('Lien de désinscription invalide.');
-    await this.prisma.prospect.update({ where: { id: prospect.id }, data: { emailFollowUpConsent: false } });
+    await this.prisma.prospect.update({ where: { id: prospect.id }, data: { emailFollowUpConsent: false, whatsappFollowUpConsent: false } });
     await this.cancelForProspect(prospect.id, 'unsubscribe');
     return { status: 'unsubscribed' as const };
   }
 
-  private canContact(prospect: { email: string | null; emailFollowUpConsent: boolean; humanTakeover: boolean; status: string }) {
-    return Boolean(prospect.email && prospect.emailFollowUpConsent && !prospect.humanTakeover && !['WON', 'LOST', 'APPOINTMENT_BOOKED'].includes(prospect.status));
+  private canContact(prospect: Pick<Prospect, 'email' | 'emailFollowUpConsent' | 'phone' | 'whatsappFollowUpConsent' | 'humanTakeover' | 'status'>, channel?: Channel) {
+    if (prospect.humanTakeover || ['WON', 'LOST', 'APPOINTMENT_BOOKED'].includes(prospect.status)) return false;
+    if (channel === 'EMAIL') return Boolean(prospect.email && prospect.emailFollowUpConsent);
+    if (channel === 'WHATSAPP') return this.config.get<string>('WHATSAPP_FOLLOWUPS_ENABLED') === 'true' && Boolean(prospect.phone && prospect.whatsappFollowUpConsent);
+    return Boolean((prospect.email && prospect.emailFollowUpConsent) || (this.config.get<string>('WHATSAPP_FOLLOWUPS_ENABLED') === 'true' && prospect.phone && prospect.whatsappFollowUpConsent));
   }
 
   private positiveConfigNumber(key: string, fallback: number, minimum: number, maximum: number) {
